@@ -15,11 +15,16 @@
  */
 package com.alibaba.dubbo.config.spring;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.alibaba.dubbo.common.utils.CollectionUtils;
+import com.alibaba.dubbo.common.utils.ReflectUtils;
+import com.alibaba.dubbo.config.*;
+import org.apache.commons.collections.MapUtils;
 import org.springframework.beans.factory.BeanFactoryUtils;
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.beans.factory.DisposableBean;
@@ -31,13 +36,6 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.support.AbstractApplicationContext;
 
-import com.alibaba.dubbo.config.ApplicationConfig;
-import com.alibaba.dubbo.config.ModuleConfig;
-import com.alibaba.dubbo.config.MonitorConfig;
-import com.alibaba.dubbo.config.ProtocolConfig;
-import com.alibaba.dubbo.config.ProviderConfig;
-import com.alibaba.dubbo.config.RegistryConfig;
-import com.alibaba.dubbo.config.ServiceConfig;
 import com.alibaba.dubbo.config.annotation.Service;
 import com.alibaba.dubbo.config.spring.extension.SpringExtensionFactory;
 
@@ -123,14 +121,13 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
     @SuppressWarnings({ "unchecked", "deprecation" })
 	public void afterPropertiesSet() throws Exception {
         if (getProvider() == null) {
-            Map<String, ProviderConfig> providerConfigMap = applicationContext == null ? null  : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProviderConfig.class, false, false);
-            if (providerConfigMap != null && providerConfigMap.size() > 0) {
-                Map<String, ProtocolConfig> protocolConfigMap = applicationContext == null ? null  : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProtocolConfig.class, false, false);
-                if ((protocolConfigMap == null || protocolConfigMap.size() == 0)
-                        && providerConfigMap.size() > 1) { // 兼容旧版本
+            Map<String, ProviderConfig> providerConfigMap = findSpringBeanMap(applicationContext, ProviderConfig.class);
+            if (MapUtils.isNotEmpty(providerConfigMap)) {
+                Map<String, ProtocolConfig> protocolConfigMap = findSpringBeanMap(applicationContext, ProtocolConfig.class);
+                if (MapUtils.isEmpty(protocolConfigMap) && providerConfigMap.size() > 1) { // 兼容旧版本
                     List<ProviderConfig> providerConfigs = new ArrayList<ProviderConfig>();
                     for (ProviderConfig config : providerConfigMap.values()) {
-                        if (config.isDefault() != null && config.isDefault().booleanValue()) {
+                        if (config.isDefault() != null && config.isDefault()) {
                             providerConfigs.add(config);
                         }
                     }
@@ -138,15 +135,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                         setProviders(providerConfigs);
                     }
                 } else {
-                    ProviderConfig providerConfig = null;
-                    for (ProviderConfig config : providerConfigMap.values()) {
-                        if (config.isDefault() == null || config.isDefault().booleanValue()) {
-                            if (providerConfig != null) {
-                                throw new IllegalStateException("Duplicate provider configs: " + providerConfig + " and " + config);
-                            }
-                            providerConfig = config;
-                        }
-                    }
+                    ProviderConfig providerConfig = findConfigBeanFromSpring(applicationContext, ProviderConfig.class);
                     if (providerConfig != null) {
                         setProvider(providerConfig);
                     }
@@ -155,88 +144,42 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         }
         if (getApplication() == null
                 && (getProvider() == null || getProvider().getApplication() == null)) {
-            Map<String, ApplicationConfig> applicationConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ApplicationConfig.class, false, false);
-            if (applicationConfigMap != null && applicationConfigMap.size() > 0) {
-                ApplicationConfig applicationConfig = null;
-                for (ApplicationConfig config : applicationConfigMap.values()) {
-                    if (config.isDefault() == null || config.isDefault().booleanValue()) {
-                        if (applicationConfig != null) {
-                            throw new IllegalStateException("Duplicate application configs: " + applicationConfig + " and " + config);
-                        }
-                        applicationConfig = config;
-                    }
-                }
-                if (applicationConfig != null) {
-                    setApplication(applicationConfig);
-                }
+            ApplicationConfig applicationConfig = findConfigBeanFromSpring(applicationContext, ApplicationConfig.class);
+
+            if (applicationConfig != null) {
+                setApplication(applicationConfig);
             }
         }
         if (getModule() == null
                 && (getProvider() == null || getProvider().getModule() == null)) {
-            Map<String, ModuleConfig> moduleConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ModuleConfig.class, false, false);
-            if (moduleConfigMap != null && moduleConfigMap.size() > 0) {
-                ModuleConfig moduleConfig = null;
-                for (ModuleConfig config : moduleConfigMap.values()) {
-                    if (config.isDefault() == null || config.isDefault().booleanValue()) {
-                        if (moduleConfig != null) {
-                            throw new IllegalStateException("Duplicate module configs: " + moduleConfig + " and " + config);
-                        }
-                        moduleConfig = config;
-                    }
-                }
-                if (moduleConfig != null) {
-                    setModule(moduleConfig);
-                }
+            ModuleConfig moduleConfig = findConfigBeanFromSpring(applicationContext, ModuleConfig.class);
+            if (moduleConfig != null) {
+                setModule(moduleConfig);
             }
+
         }
         if ((getRegistries() == null || getRegistries().size() == 0)
                 && (getProvider() == null || getProvider().getRegistries() == null || getProvider().getRegistries().size() == 0)
                 && (getApplication() == null || getApplication().getRegistries() == null || getApplication().getRegistries().size() == 0)) {
-            Map<String, RegistryConfig> registryConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, RegistryConfig.class, false, false);
-            if (registryConfigMap != null && registryConfigMap.size() > 0) {
-                List<RegistryConfig> registryConfigs = new ArrayList<RegistryConfig>();
-                for (RegistryConfig config : registryConfigMap.values()) {
-                    if (config.isDefault() == null || config.isDefault().booleanValue()) {
-                        registryConfigs.add(config);
-                    }
-                }
-                if (registryConfigs != null && registryConfigs.size() > 0) {
-                    super.setRegistries(registryConfigs);
-                }
+
+            List<RegistryConfig> registryConfigs = findConfigListBeanFromSpring(applicationContext, RegistryConfig.class);
+            if (CollectionUtils.isNotEmpty(registryConfigs)) {
+                super.setRegistries(registryConfigs);
             }
         }
         if (getMonitor() == null
                 && (getProvider() == null || getProvider().getMonitor() == null)
                 && (getApplication() == null || getApplication().getMonitor() == null)) {
-            Map<String, MonitorConfig> monitorConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, MonitorConfig.class, false, false);
-            if (monitorConfigMap != null && monitorConfigMap.size() > 0) {
-                MonitorConfig monitorConfig = null;
-                for (MonitorConfig config : monitorConfigMap.values()) {
-                    if (config.isDefault() == null || config.isDefault().booleanValue()) {
-                        if (monitorConfig != null) {
-                            throw new IllegalStateException("Duplicate monitor configs: " + monitorConfig + " and " + config);
-                        }
-                        monitorConfig = config;
-                    }
-                }
-                if (monitorConfig != null) {
-                    setMonitor(monitorConfig);
-                }
+            MonitorConfig monitorConfig = findConfigBeanFromSpring(applicationContext, MonitorConfig.class);
+            if (monitorConfig != null) {
+                setMonitor(monitorConfig);
             }
         }
         if ((getProtocols() == null || getProtocols().size() == 0)
                 && (getProvider() == null || getProvider().getProtocols() == null || getProvider().getProtocols().size() == 0)) {
-            Map<String, ProtocolConfig> protocolConfigMap = applicationContext == null ? null  : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProtocolConfig.class, false, false);
-            if (protocolConfigMap != null && protocolConfigMap.size() > 0) {
-                List<ProtocolConfig> protocolConfigs = new ArrayList<ProtocolConfig>();
-                for (ProtocolConfig config : protocolConfigMap.values()) {
-                    if (config.isDefault() == null || config.isDefault().booleanValue()) {
-                        protocolConfigs.add(config);
-                    }
-                }
-                if (protocolConfigs != null && protocolConfigs.size() > 0) {
-                    super.setProtocols(protocolConfigs);
-                }
+            List<ProtocolConfig> protocolConfigs = findConfigListBeanFromSpring(applicationContext, ProtocolConfig.class);
+            if (CollectionUtils.isNotEmpty(protocolConfigs)) {
+                super.setProtocols(protocolConfigs);
             }
         }
         if (getPath() == null || getPath().length() == 0) {
@@ -249,6 +192,75 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         if (! isDelay()) {
             export();
         }
+    }
+
+    private <T extends AbstractConfig> T findConfigBeanFromSpring(ApplicationContext applicationContext, Class<T> clazz) {
+        Map<String, T> configMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, clazz, false, false);
+        if (MapUtils.isEmpty(configMap)) {
+            return null;
+        }
+        Method method = getIsDefaultMethod(clazz);
+        if (method == null) {
+            return null;
+        }
+
+        T targetConfig = null;
+        for (T config : configMap.values()) {
+            Boolean isDefault = invokeIsDefault(method, config);
+            if (isDefault == null || isDefault) {
+                if (targetConfig != null) {
+                    throw new IllegalStateException("Duplicate " + clazz.getSimpleName() + " configs: " + targetConfig + " and " + config);
+                }
+                targetConfig = config;
+            }
+        }
+        return targetConfig;
+    }
+
+    private <T extends AbstractConfig> List<T> findConfigListBeanFromSpring(ApplicationContext applicationContext, Class<T> clazz) {
+        Map<String, T> configMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, clazz, false, false);
+        if (MapUtils.isEmpty(configMap)) {
+            return null;
+        }
+
+        Method method = getIsDefaultMethod(clazz);
+        if (method == null) {
+            return null;
+        }
+
+        List<T> configs = new ArrayList<T>(6);
+        for (T config : configMap.values()) {
+            Boolean isDefault = invokeIsDefault(method, config);
+            if (isDefault == null || isDefault) {
+                configs.add(config);
+            }
+        }
+        return configs;
+    }
+
+    private <T> Map<String, T> findSpringBeanMap(ApplicationContext applicationContext, Class<T> clazz) {
+        return applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, clazz, false, false);
+    }
+
+    private <T extends AbstractConfig> Method getIsDefaultMethod(Class<T> clazz) {
+        try {
+            return ReflectUtils.findMethodByMethodName(clazz, "isDefault");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private Boolean invokeIsDefault(Method method, AbstractConfig config) {
+        Boolean isDefault = null;
+        try {
+            isDefault = (Boolean) method.invoke(config);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+        return isDefault;
     }
 
     public void destroy() throws Exception {

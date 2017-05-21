@@ -110,6 +110,7 @@
 		<guice_version>3.0</guice_version>
 		<cglib_version>2.2</cglib_version>
 		<webx_version>3.0.8</webx_version>
+		<common-collections-version>3.2.1</common-collections-version>
 		<!-- Log libs -->
 		<slf4j_version>1.7.25</slf4j_version>
 		<jcl_version>1.1</jcl_version>
@@ -301,6 +302,11 @@
 				<groupId>commons-logging</groupId>
 				<artifactId>commons-logging-api</artifactId>
 				<version>${jcl_version}</version>
+			</dependency>
+			<dependency>
+				<groupId>commons-collections</groupId>
+				<artifactId>commons-collections</artifactId>
+				<version>${common-collections-version}</version>
 			</dependency>
 			<dependency>
 				<groupId>log4j</groupId>
