@@ -23,6 +23,7 @@ import java.util.Map;
 
 import com.alibaba.dubbo.common.utils.CollectionUtils;
 import com.alibaba.dubbo.common.utils.ReflectUtils;
+import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.dubbo.config.*;
 import org.apache.commons.collections.MapUtils;
 import org.springframework.beans.factory.BeanFactoryUtils;
@@ -76,7 +77,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
 		    SPRING_CONTEXT = applicationContext;
 		    try {
 	            Method method = applicationContext.getClass().getMethod("addApplicationListener", new Class<?>[]{ApplicationListener.class}); // 兼容Spring2.0.1
-	            method.invoke(applicationContext, new Object[] {this});
+	            method.invoke(applicationContext, this);
 	            supportedApplicationListener = true;
 	        } catch (Throwable t) {
                 if (applicationContext instanceof AbstractApplicationContext) {
@@ -85,7 +86,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                         if (! method.isAccessible()) {
                             method.setAccessible(true);
                         }
-    	                method.invoke(applicationContext, new Object[] {this});
+    	                method.invoke(applicationContext, this);
                         supportedApplicationListener = true;
     	            } catch (Throwable t2) {
     	            }
@@ -115,7 +116,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         if (delay == null && provider != null) {
             delay = provider.getDelay();
         }
-        return supportedApplicationListener && (delay == null || delay.intValue() == -1);
+        return supportedApplicationListener && (delay == null || delay == -1);
     }
 
     @SuppressWarnings({ "unchecked", "deprecation" })
@@ -144,47 +145,35 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
         }
         if (getApplication() == null
                 && (getProvider() == null || getProvider().getApplication() == null)) {
-            ApplicationConfig applicationConfig = findConfigBeanFromSpring(applicationContext, ApplicationConfig.class);
-
-            if (applicationConfig != null) {
-                setApplication(applicationConfig);
-            }
+            setApplication(findConfigBeanFromSpring(applicationContext, ApplicationConfig.class));
         }
+
         if (getModule() == null
                 && (getProvider() == null || getProvider().getModule() == null)) {
-            ModuleConfig moduleConfig = findConfigBeanFromSpring(applicationContext, ModuleConfig.class);
-            if (moduleConfig != null) {
-                setModule(moduleConfig);
-            }
-
+            setModule(findConfigBeanFromSpring(applicationContext, ModuleConfig.class));
         }
-        if ((getRegistries() == null || getRegistries().size() == 0)
-                && (getProvider() == null || getProvider().getRegistries() == null || getProvider().getRegistries().size() == 0)
-                && (getApplication() == null || getApplication().getRegistries() == null || getApplication().getRegistries().size() == 0)) {
 
-            List<RegistryConfig> registryConfigs = findConfigListBeanFromSpring(applicationContext, RegistryConfig.class);
-            if (CollectionUtils.isNotEmpty(registryConfigs)) {
-                super.setRegistries(registryConfigs);
-            }
+        if (CollectionUtils.isEmpty(getRegistries())
+                && (getProvider() == null || CollectionUtils.isEmpty(getProvider().getRegistries()))
+                && (getApplication() == null || CollectionUtils.isEmpty(getApplication().getRegistries()))) {
+            super.setRegistries(findConfigListBeanFromSpring(applicationContext, RegistryConfig.class));
         }
+
         if (getMonitor() == null
                 && (getProvider() == null || getProvider().getMonitor() == null)
                 && (getApplication() == null || getApplication().getMonitor() == null)) {
-            MonitorConfig monitorConfig = findConfigBeanFromSpring(applicationContext, MonitorConfig.class);
-            if (monitorConfig != null) {
-                setMonitor(monitorConfig);
-            }
+            setMonitor(findConfigBeanFromSpring(applicationContext, MonitorConfig.class));
         }
-        if ((getProtocols() == null || getProtocols().size() == 0)
-                && (getProvider() == null || getProvider().getProtocols() == null || getProvider().getProtocols().size() == 0)) {
+
+        if (CollectionUtils.isEmpty(getProtocols())
+                && (getProvider() == null || CollectionUtils.isEmpty(getProvider().getProtocols()))) {
             List<ProtocolConfig> protocolConfigs = findConfigListBeanFromSpring(applicationContext, ProtocolConfig.class);
             if (CollectionUtils.isNotEmpty(protocolConfigs)) {
                 super.setProtocols(protocolConfigs);
             }
         }
-        if (getPath() == null || getPath().length() == 0) {
-            if (beanName != null && beanName.length() > 0 
-                    && getInterface() != null && getInterface().length() > 0
+        if (StringUtils.isBlank(getPath())) {
+            if (StringUtils.isNotEmpty(beanName) && StringUtils.isNotEmpty(getInterface())
                     && beanName.startsWith(getInterface())) {
                 setPath(beanName);
             }

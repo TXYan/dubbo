@@ -24,11 +24,7 @@ import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.Version;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
-import com.alibaba.dubbo.common.utils.ConfigUtils;
-import com.alibaba.dubbo.common.utils.NetUtils;
-import com.alibaba.dubbo.common.utils.ReflectUtils;
-import com.alibaba.dubbo.common.utils.StringUtils;
-import com.alibaba.dubbo.common.utils.UrlUtils;
+import com.alibaba.dubbo.common.utils.*;
 import com.alibaba.dubbo.config.support.Parameter;
 import com.alibaba.dubbo.monitor.MonitorFactory;
 import com.alibaba.dubbo.monitor.MonitorService;
@@ -103,9 +99,9 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
     protected void checkRegistry() {
         // 兼容旧版本
-        if (registries == null || registries.size() == 0) {
+        if (CollectionUtils.isEmpty(registries)) {
             String address = ConfigUtils.getProperty("dubbo.registry.address");
-            if (address != null && address.length() > 0) {
+            if (StringUtils.isNotEmpty(address)) {
                 registries = new ArrayList<RegistryConfig>();
                 String[] as = address.split("\\s*[|]+\\s*");
                 for (String a : as) {
@@ -115,7 +111,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                 }
             }
         }
-        if ((registries == null || registries.size() == 0)) {
+        if (CollectionUtils.isEmpty(registries)) {
             throw new IllegalStateException((getClass().getSimpleName().startsWith("Reference") 
                     ? "No such any registry to refer service in consumer " 
                         : "No such any registry to export service in provider ")
@@ -158,42 +154,43 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     protected List<URL> loadRegistries(boolean provider) {
         checkRegistry();
         List<URL> registryList = new ArrayList<URL>();
-        if (registries != null && registries.size() > 0) {
-            for (RegistryConfig config : registries) {
-                String address = config.getAddress();
-                if (address == null || address.length() == 0) {
-                	address = Constants.ANYHOST_VALUE;
+        if (CollectionUtils.isEmpty(registries)) {
+            return registryList;
+        }
+        for (RegistryConfig config : registries) {
+            String address = config.getAddress();
+            if (StringUtils.isEmpty(address)) {
+                address = Constants.ANYHOST_VALUE;
+            }
+            String sysaddress = System.getProperty("dubbo.registry.address");
+            if (StringUtils.isNotEmpty(sysaddress)) {
+                address = sysaddress;
+            }
+            if (StringUtils.isNotEmpty(address)
+                    && ! RegistryConfig.NO_AVAILABLE.equalsIgnoreCase(address)) {
+                Map<String, String> map = new HashMap<String, String>();
+                appendParameters(map, application);
+                appendParameters(map, config);
+                map.put("path", RegistryService.class.getName());
+                map.put("dubbo", Version.getVersion());
+                map.put(Constants.TIMESTAMP_KEY, String.valueOf(System.currentTimeMillis()));
+                if (ConfigUtils.getPid() > 0) {
+                    map.put(Constants.PID_KEY, String.valueOf(ConfigUtils.getPid()));
                 }
-                String sysaddress = System.getProperty("dubbo.registry.address");
-                if (sysaddress != null && sysaddress.length() > 0) {
-                    address = sysaddress;
+                if (! map.containsKey("protocol")) {
+                    if (ExtensionLoader.getExtensionLoader(RegistryFactory.class).hasExtension("remote")) {
+                        map.put("protocol", "remote");
+                    } else {
+                        map.put("protocol", "dubbo");
+                    }
                 }
-                if (address != null && address.length() > 0 
-                        && ! RegistryConfig.NO_AVAILABLE.equalsIgnoreCase(address)) {
-                    Map<String, String> map = new HashMap<String, String>();
-                    appendParameters(map, application);
-                    appendParameters(map, config);
-                    map.put("path", RegistryService.class.getName());
-                    map.put("dubbo", Version.getVersion());
-                    map.put(Constants.TIMESTAMP_KEY, String.valueOf(System.currentTimeMillis()));
-                    if (ConfigUtils.getPid() > 0) {
-                        map.put(Constants.PID_KEY, String.valueOf(ConfigUtils.getPid()));
-                    }
-                    if (! map.containsKey("protocol")) {
-                        if (ExtensionLoader.getExtensionLoader(RegistryFactory.class).hasExtension("remote")) {
-                            map.put("protocol", "remote");
-                        } else {
-                            map.put("protocol", "dubbo");
-                        }
-                    }
-                    List<URL> urls = UrlUtils.parseURLs(address, map);
-                    for (URL url : urls) {
-                        url = url.addParameter(Constants.REGISTRY_KEY, url.getProtocol());
-                        url = url.setProtocol(Constants.REGISTRY_PROTOCOL);
-                        if ((provider && url.getParameter(Constants.REGISTER_KEY, true))
-                                || (! provider && url.getParameter(Constants.SUBSCRIBE_KEY, true))) {
-                            registryList.add(url);
-                        }
+                List<URL> urls = UrlUtils.parseURLs(address, map);
+                for (URL url : urls) {
+                    url = url.addParameter(Constants.REGISTRY_KEY, url.getProtocol());
+                    url = url.setProtocol(Constants.REGISTRY_PROTOCOL);
+                    if ((provider && url.getParameter(Constants.REGISTER_KEY, true))
+                            || (! provider && url.getParameter(Constants.SUBSCRIBE_KEY, true))) {
+                        registryList.add(url);
                     }
                 }
             }
@@ -251,23 +248,25 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
             throw new IllegalStateException("The interface class " + interfaceClass + " is not a interface!");
         }
         // 检查方法是否在接口中存在
-        if (methods != null && methods.size() > 0) {
-            for (MethodConfig methodBean : methods) {
-                String methodName = methodBean.getName();
-                if (methodName == null || methodName.length() == 0) {
-                    throw new IllegalStateException("<dubbo:method> name attribute is required! Please check: <dubbo:service interface=\"" + interfaceClass.getName() + "\" ... ><dubbo:method name=\"\" ... /></<dubbo:reference>");
+        if (CollectionUtils.isEmpty(methods)) {
+            return;
+        }
+
+        for (MethodConfig methodBean : methods) {
+            String methodName = methodBean.getName();
+            if (StringUtils.isBlank(methodName)) {
+                throw new IllegalStateException("<dubbo:method> name attribute is required! Please check: <dubbo:service interface=\"" + interfaceClass.getName() + "\" ... ><dubbo:method name=\"\" ... /></<dubbo:reference>");
+            }
+            boolean hasMethod = false;
+            for (java.lang.reflect.Method method : interfaceClass.getMethods()) {
+                if (method.getName().equals(methodName)) {
+                    hasMethod = true;
+                    break;
                 }
-                boolean hasMethod = false;
-                for (java.lang.reflect.Method method : interfaceClass.getMethods()) {
-                    if (method.getName().equals(methodName)) {
-                        hasMethod = true;
-                        break;
-                    }
-                }
-                if (!hasMethod) {
-                    throw new IllegalStateException("The interface " + interfaceClass.getName()
-                            + " not found method " + methodName);
-                }
+            }
+            if (!hasMethod) {
+                throw new IllegalStateException("The interface " + interfaceClass.getName()
+                        + " not found method " + methodName);
             }
         }
     }
