@@ -8,7 +8,7 @@ public class BenchmarkClient extends AbstractBenchmarkClient {
     @Override
     public ClientRunnable getClientRunnable(String targetIP, int targetPort, int clientNums, int rpcTimeout,
                                             CyclicBarrier barrier,
-                                            CountDownLatch latch, long endTime, long startTime) {
+                                            CountDownLatch latch, long startTime, long endTime) {
         return new SimpleProcessorBenchmarkClientRunnable(targetIP, targetPort, clientNums, rpcTimeout,
                                                          barrier, latch, startTime, endTime);
     }

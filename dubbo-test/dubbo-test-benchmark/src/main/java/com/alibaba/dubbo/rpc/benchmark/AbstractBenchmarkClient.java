@@ -104,7 +104,7 @@ public abstract class AbstractBenchmarkClient {
         CountDownLatch latch = new CountDownLatch(concurrents);
         List<ClientRunnable> runnables = new ArrayList<ClientRunnable>();
         // benchmark start after thirty seconds,let java app warm up
-        long beginTime = System.nanoTime() / 1000L + 30 * 1000 * 1000L;
+        long beginTime = System.nanoTime() / 1000L + 3 * 1000 * 1000L;
         for (int i = 0; i < concurrents; i++) {
             ClientRunnable runnable = getClientRunnable(serverIP, serverPort, clientNums, timeout, barrier, latch,
                                                         beginTime, endtime);

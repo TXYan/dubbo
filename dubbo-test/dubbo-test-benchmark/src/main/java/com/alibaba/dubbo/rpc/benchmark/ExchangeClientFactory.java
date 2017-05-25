@@ -39,20 +39,20 @@ public class ExchangeClientFactory {
             }
         } else {
             FutureTask<List<ExchangeClient>> task = new FutureTask<List<ExchangeClient>>(
-                                                                                         new Callable<List<ExchangeClient>>() {
+                 new Callable<List<ExchangeClient>>() {
 
-                                                                                             public List<ExchangeClient> call()
-                                                                                                                               throws Exception {
-                                                                                                 List<ExchangeClient> clients = new ArrayList<ExchangeClient>(
-                                                                                                                                                              clientNums);
-                                                                                                 for (int i = 0; i < clientNums; i++) {
-                                                                                                     clients.add(createClient(targetIP,
-                                                                                                                              targetPort,
-                                                                                                                              connectTimeout));
-                                                                                                 }
-                                                                                                 return clients;
-                                                                                             }
-                                                                                         });
+                     public List<ExchangeClient> call()
+                                                       throws Exception {
+                         List<ExchangeClient> clients = new ArrayList<ExchangeClient>(
+                                                                                      clientNums);
+                         for (int i = 0; i < clientNums; i++) {
+                             clients.add(createClient(targetIP,
+                                                      targetPort,
+                                                      connectTimeout));
+                         }
+                         return clients;
+                     }
+                 });
             FutureTask<List<ExchangeClient>> currentTask = clients.putIfAbsent(key, task);
             if (currentTask == null) {
                 task.run();

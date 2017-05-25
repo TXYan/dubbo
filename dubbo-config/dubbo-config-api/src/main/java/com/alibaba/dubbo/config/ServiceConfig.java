@@ -308,7 +308,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
         // 导出服务
         String contextPath = protocolConfig.getContextpath();
-        if ((contextPath == null || contextPath.length() == 0) && provider != null) {
+        if (StringUtils.isEmpty(contextPath) && provider != null) {
             contextPath = provider.getContextpath();
         }
         URL url = new URL(name, host, port, (StringUtils.isBlank(contextPath) ? "" : contextPath + "/") + path, map);

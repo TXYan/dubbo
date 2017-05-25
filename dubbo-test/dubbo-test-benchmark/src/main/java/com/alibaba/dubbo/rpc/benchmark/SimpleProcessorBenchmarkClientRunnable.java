@@ -100,7 +100,7 @@ public class SimpleProcessorBenchmarkClientRunnable implements ClientRunnable {
     private void runJavaAndHessian() {
         while (running) {
             Object requestObject = new RequestObject(requestSize);
-            long beginTime = System.nanoTime();
+            long beginTime = System.nanoTime() / 1000L;
             if (beginTime >= endTime) {
                 running = false;
                 break;
@@ -108,7 +108,8 @@ public class SimpleProcessorBenchmarkClientRunnable implements ClientRunnable {
             try {
                 Object response = null;
                 response = clientFactory.get(targetIP, targetPort, rpcTimeout, clientNums).request(requestObject).get();
-                long currentTime = System.nanoTime();
+                long currentTime = System.nanoTime() / 1000L;
+                //这里判断为什么要放在这里？？ 前面说了 给程序3秒的预热时间
                 if (beginTime <= startTime) {
                     continue;
                 }
@@ -130,7 +131,7 @@ public class SimpleProcessorBenchmarkClientRunnable implements ClientRunnable {
                 }
             } catch (Exception e) {
                 LOGGER.error("client.invokeSync error", e);
-                long currentTime = System.nanoTime();
+                long currentTime = System.nanoTime() / 1000L;
                 if (beginTime <= startTime) {
                     continue;
                 }
