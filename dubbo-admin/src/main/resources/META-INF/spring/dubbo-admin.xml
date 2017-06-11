@@ -20,9 +20,10 @@
 	
 	<dubbo:application name="dubbo-admin" />
 
-	<dubbo:registry address="${dubbo.registry.address}" check="false" file="false" />
+	<dubbo:registry id="testRegistry" address="${dubbo.registry.address}" check="false" file="dubbo-admin.file" group="test" />
+	<dubbo:registry id="test2Registry" address="${dubbo.registry.address}" check="false" file="dubbo-admin.file" group="tests" />
 
-	<dubbo:reference id="registryService" interface="com.alibaba.dubbo.registry.RegistryService" check="false" />
+	<dubbo:reference id="registryService" interface="com.alibaba.dubbo.registry.RegistryService" check="false" registry="testRegistry,test2Registry" />
 
 	<bean id="configService" class="com.alibaba.dubbo.governance.service.impl.ConfigServiceImpl" />
 	

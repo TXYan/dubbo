@@ -22,7 +22,7 @@
 
     <dubbo:application name="async-consumer"  />
     
-    <dubbo:registry address="zookeeper://127.0.0.1:2181" file="async-consumer.file" />
+    <dubbo:registry address="zookeeper://127.0.0.1:2181" file="async-consumer.file" group="test"/>
     
 	<dubbo:reference id="asyncService" interface="com.alibaba.dubbo.examples.async.api.AsyncService" />
 

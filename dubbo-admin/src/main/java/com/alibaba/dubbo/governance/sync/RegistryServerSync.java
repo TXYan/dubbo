@@ -84,7 +84,9 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
         // Map<category, Map<servicename, Map<Long, URL>>>
         final Map<String, Map<String, Map<Long, URL>>> categories = new HashMap<String, Map<String, Map<Long, URL>>>();
         for(URL url : urls) {
-        	String category = url.getParameter(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
+            logger.info("RegistryServiceSync debug url:" + url);
+
+            String category = url.getParameter(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
             if(Constants.EMPTY_PROTOCOL.equalsIgnoreCase(url.getProtocol())) { // 注意：empty协议的group和version为*
             	ConcurrentMap<String, Map<Long, URL>> services = registryCache.get(category);
             	if(services != null) {

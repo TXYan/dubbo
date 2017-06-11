@@ -22,14 +22,12 @@
 
     <dubbo:application name="async-provider"  />
     
-    <dubbo:registry id="testRegistry" address="zookeeper://127.0.0.1:2181" file="async-provider.file" group="test" />
+    <dubbo:registry id="test2Registry" address="zookeeper://127.0.0.1:2181" file="async-provider2.file" group="test2" />
 
-    <dubbo:protocol name="dubbo" port="20880" contextpath="222" />
+    <dubbo:protocol name="dubbo" port="20881" />
 
-    <dubbo:monitor protocol="registry"/>
-    
     <bean id="asyncService" class="com.alibaba.dubbo.examples.async.impl.AsyncServiceImpl" />
     
-	<dubbo:service interface="com.alibaba.dubbo.examples.async.api.AsyncService" ref="asyncService" registry="testRegistry" />
+	<dubbo:service interface="com.alibaba.dubbo.examples.async.api.AsyncService" ref="asyncService" registry="test2Registry" />
 
 </beans>

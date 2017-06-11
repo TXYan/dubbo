@@ -16,6 +16,7 @@
 package com.alibaba.dubbo.common.extensionloader;
 
 import com.alibaba.dubbo.common.URL;
+import com.alibaba.dubbo.common.extension.ExtensionFactory;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.common.extensionloader.adaptive.HasAdaptiveExt;
 import com.alibaba.dubbo.common.extensionloader.adaptive.impl.HasAdaptiveExt_ManualAdaptive;
@@ -47,6 +48,17 @@ public class ExtensionLoader_Adaptive_Test {
         ExtensionLoader<HasAdaptiveExt> loader = ExtensionLoader.getExtensionLoader(HasAdaptiveExt.class);
         HasAdaptiveExt ext = loader.getAdaptiveExtension();
         assertTrue(ext instanceof HasAdaptiveExt_ManualAdaptive);
+    }
+
+    @Test
+    public void test_factoryExtension() {
+        ExtensionFactory extensionFactory = ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension();
+        System.out.println(extensionFactory.getClass().getName());
+
+        ExtensionLoader<SimpleExt> extExtensionLoader = ExtensionLoader.getExtensionLoader(SimpleExt.class);
+        SimpleExt simpleExt = extExtensionLoader.getAdaptiveExtension();
+        //这里测试类上Adaptive的作用，it worked
+        System.out.println(simpleExt.echo(null, "aa"));
     }
 
     @Test

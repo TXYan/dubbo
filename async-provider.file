@@ -1,3 +1,3 @@
 #Dubbo Registry Cache
-#Wed May 24 00:03:38 CST 2017
-com.alibaba.dubbo.examples.async.api.AsyncService=empty\://192.168.1.100\:20880/222/com.alibaba.dubbo.examples.async.api.AsyncService?anyhost\=true&application\=async-provider&category\=configurators&check\=false&dubbo\=2.0.0&generic\=false&interface\=com.alibaba.dubbo.examples.async.api.AsyncService&methods\=sayHello&pid\=1028&side\=provider&timestamp\=1495555418311
+#Tue Jun 06 14:00:33 CST 2017
+com.alibaba.dubbo.examples.async.api.AsyncService=empty\://172.16.7.37\:20880/222/com.alibaba.dubbo.examples.async.api.AsyncService?anyhost\=true&application\=async-provider&category\=configurators&check\=false&dubbo\=2.0.0&generic\=false&interface\=com.alibaba.dubbo.examples.async.api.AsyncService&methods\=sayHello&pid\=6240&side\=provider&timestamp\=1496456015420
