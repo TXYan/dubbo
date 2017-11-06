@@ -34,7 +34,7 @@ import com.alibaba.dubbo.registry.common.domain.Route;
 public class RouteServiceImpl extends AbstractService implements RouteService {
 
     public void createRoute(Route route) {
-        registryService.register(route.toUrl());
+        register(route.toUrl());
     }
 
     public void updateRoute(Route route) {
@@ -46,9 +46,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if(oldRoute == null) {
             throw new IllegalStateException("Route was changed!");
         }
-        
-        registryService.unregister(oldRoute);
-        registryService.register(route.toUrl());
+        unregister(oldRoute);
+        register(route.toUrl());
     }
 
     public void deleteRoute(Long id) {
@@ -56,7 +55,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if(oldRoute == null) {
             throw new IllegalStateException("Route was changed!");
         }
-        registryService.unregister(oldRoute);
+        unregister(oldRoute);
     }
 
     public void enableRoute(Long id) {
@@ -72,9 +71,9 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             return;
         }
 
-		registryService.unregister(oldRoute);
+		unregister(oldRoute);
         URL newRoute= oldRoute.addParameter("enabled", true);
-        registryService.register(newRoute);
+        register(newRoute);
         
     }
 
@@ -92,8 +91,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         }
 
         URL newRoute = oldRoute.addParameter("enabled", false);
-        registryService.unregister(oldRoute);
-        registryService.register(newRoute);
+        unregister(oldRoute);
+        register(newRoute);
         
     }
 

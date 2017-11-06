@@ -13,6 +13,8 @@ import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
+import com.alibaba.dubbo.governance.web.util.ContextUtil;
+import com.alibaba.dubbo.registry.common.RegistryManager;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.alibaba.citrus.service.requestcontext.parser.CookieParser;
@@ -34,9 +36,12 @@ public class Menu {
     
     @Autowired
     ServletContext servletcontext;
-    
+
     @Autowired
-    RegistryServerSync registryServerSync;
+    private RegistryManager registryManager;
+    
+//    @Autowired
+//    RegistryServerSync registryServerSync;
 
     public void execute(HttpSession session, Context context, CookieParser parser) {
         
@@ -53,6 +58,7 @@ public class Menu {
         }
         context.put(WebConstants.CURRENT_USER_KEY, user);
         context.put("language", parser.getString("locale"));
-        context.put("registryServerSync", registryServerSync);
+//        context.put("registryServerSync", registryServerSync);
+        context.put("registryServerSync", registryManager.getRegistryServiceSync(ContextUtil.getRegistryKey()));
     }
 }

@@ -21,14 +21,17 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 
+import com.alibaba.dubbo.governance.web.util.ContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.alibaba.citrus.service.pipeline.PipelineContext;
 import com.alibaba.citrus.service.pipeline.support.AbstractValve;
 import com.alibaba.citrus.turbine.TurbineRunData;
 import com.alibaba.dubbo.governance.web.common.i18n.LocaleUtil;
+import org.springframework.web.util.WebUtils;
 
 /**
  * @author guanghui.shigh
@@ -56,9 +59,12 @@ public class LocaleValve extends AbstractValve {
     }
 
     public void invoke(PipelineContext pipelineContext) throws Exception {
+        //ytx
+        setRegistryKey();
         TurbineRunData rundata = getTurbineRunData(request);
         if (ignoreTarget(rundata.getTarget())) {
             pipelineContext.invokeNext();
+            cleanRegistryKey();
             return;
         }
 
@@ -87,5 +93,17 @@ public class LocaleValve extends AbstractValve {
         LocaleUtil.setLocale(newLocale);
 
         pipelineContext.invokeNext();
+        cleanRegistryKey();
+    }
+
+    private void setRegistryKey() {
+        Cookie cookie = WebUtils.getCookie(request, "registryKey");
+        if (cookie != null) {
+            ContextUtil.setRegistryKey(cookie.getValue());
+        }
+    }
+
+    private void cleanRegistryKey() {
+        ContextUtil.cleanTheadData();
     }
 }

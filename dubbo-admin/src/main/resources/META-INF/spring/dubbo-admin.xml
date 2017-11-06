@@ -3,9 +3,11 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns:context="http://www.springframework.org/schema/context"
 	xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+	xmlns:util="http://www.springframework.org/schema/util"
+	   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
-		http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+		http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
 
 	<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
 		<property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE" />
@@ -17,13 +19,52 @@
 			</list>
 		</property>
 	</bean>
-	
+
 	<dubbo:application name="dubbo-admin" />
 
-	<dubbo:registry id="testRegistry" address="${dubbo.registry.address}" check="false" file="dubbo-admin.file" group="test" />
-	<dubbo:registry id="test2Registry" address="${dubbo.registry.address}" check="false" file="dubbo-admin.file" group="tests" />
+	<!-- 注册中心和reference、sync一一对应 -->
+	<dubbo:registry id="test" address="${dubbo.registry.address}" check="false" file="dubbo-admin.file" group="test" />
 
-	<dubbo:reference id="registryService" interface="com.alibaba.dubbo.registry.RegistryService" check="false" registry="testRegistry,test2Registry" />
+	<dubbo:reference id="testRegistryService" interface="com.alibaba.dubbo.registry.RegistryService" check="false" registry="test" />
+
+	<bean id="testGovernanceCache" class="com.alibaba.dubbo.governance.sync.RegistryServerSync" >
+		<property name="registryService" ref="testRegistryService"/>
+	</bean>
+
+	<dubbo:registry id="test2" address="${dubbo.registry.address}" check="false" file="dubbo-admin.file" group="test2" />
+
+	<dubbo:reference id="test2RegistryService" interface="com.alibaba.dubbo.registry.RegistryService" check="false" registry="test2" />
+
+	<bean id="test2GovernanceCache" class="com.alibaba.dubbo.governance.sync.RegistryServerSync" >
+		<property name="registryService" ref="test2RegistryService"/>
+	</bean>
+
+	<bean id="registryTest" class="com.alibaba.dubbo.registry.common.RegistryUnit">
+		<property name="key" value="test"/>
+		<property name="name" value="test中心"/>
+		<property name="registryConfig" ref="test"/>
+		<property name="registryService" ref="testRegistryService"/>
+		<property name="registryServerSync" ref="testGovernanceCache"/>
+	</bean>
+
+	<bean id="registryTest2" class="com.alibaba.dubbo.registry.common.RegistryUnit">
+		<property name="key" value="test2"/>
+		<property name="name" value="test2中心"/>
+		<property name="registryConfig" ref="test2"/>
+		<property name="registryService" ref="test2RegistryService"/>
+		<property name="registryServerSync" ref="test2GovernanceCache"/>
+	</bean>
+
+	<!-- 用来支持多注册中心 -->
+	<bean id="registryManager" class="com.alibaba.dubbo.registry.common.RegistryManager">
+		<property name="registryUnitList">
+			<util:list value-type="com.alibaba.dubbo.registry.common.RegistryUnit">
+				<ref bean="registryTest"/>
+				<ref bean="registryTest2"/>
+			</util:list>
+		</property>
+
+	</bean>
 
 	<bean id="configService" class="com.alibaba.dubbo.governance.service.impl.ConfigServiceImpl" />
 	
@@ -42,6 +83,5 @@
 		<property name="guestPassword" value="${dubbo.admin.guest.password}" />
 	</bean>
 
-	<bean id="governanceCache" class="com.alibaba.dubbo.governance.sync.RegistryServerSync" />
 
 </beans>

@@ -57,7 +57,6 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
 
     private static final AtomicLong ID = new AtomicLong();
 
-    @Autowired
     private RegistryService registryService;
 
     // ConcurrentMap<category, ConcurrentMap<servicename, Map<Long, URL>>>
@@ -130,6 +129,10 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
             }
             services.putAll(categoryEntry.getValue());
         }
+    }
+
+    public void setRegistryService(RegistryService registryService) {
+        this.registryService = registryService;
     }
 }
     

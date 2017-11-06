@@ -30,6 +30,7 @@ public class Ext6Impl1 implements Ext6 {
     public Dao obj;
     
     public void setDao(Dao obj){
+        this.obj = obj;
         Assert.assertNotNull("inject extension instance can not be null", obj);
         Assert.fail();
     }
@@ -39,6 +40,7 @@ public class Ext6Impl1 implements Ext6 {
     }
 
     public String echo(URL url, String s) {
+        System.out.println("obj:" + obj);
         return "Ext6Impl1-echo-" + ext1.echo(url, s);
     }
     

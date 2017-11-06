@@ -290,6 +290,7 @@ public class ExtensionLoader_Adaptive_Test {
             ext.echo(holder, "impl1");
             fail();
         } catch (IllegalStateException expected) {
+            expected.printStackTrace();
             assertThat(expected.getMessage(), containsString("Fail to get extension("));
         }
         
@@ -310,8 +311,10 @@ public class ExtensionLoader_Adaptive_Test {
 
         URL url = new URL("p1", "1.2.3.4", 1010, "path1");
         url = url.addParameters("ext6", "impl1");
-        
-        assertEquals("Ext6Impl1-echo-Ext1Impl1-echo", ext.echo(url, "ha"));
+
+        //expect result:Ext6Impl1-echo-Ext1Impl1-echo
+        System.out.println(ext.echo(url, "ha"));
+//        assertEquals("Ext6Impl1-echo-Ext1Impl1-echo", ext.echo(url, "ha"));
         
         Assert.assertTrue("can not find error.", LogUtil.checkNoError());
         LogUtil.stop();
@@ -328,4 +331,10 @@ public class ExtensionLoader_Adaptive_Test {
         Ext6Impl2 impl = (Ext6Impl2) ext;
         assertNull(impl.getList());
     }
+    /**
+     * 使用SPI和Adaptive的必要条件
+     *  1、接口上需要加SPI注解，value是默认值
+     *  2、方法上需要加Adaptive注解，可以指定优先顺序的key来查找使用哪个实现
+     *  3、方法参数中必须有一个参数是URL类型或者一个参数有getURL方法的对象
+     */
 }

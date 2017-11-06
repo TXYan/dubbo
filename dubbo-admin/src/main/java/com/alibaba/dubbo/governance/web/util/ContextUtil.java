@@ -15,6 +15,7 @@
  */
 package com.alibaba.dubbo.governance.web.util;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -23,6 +24,8 @@ import java.util.Map;
  *
  */
 public class ContextUtil {
+
+    private static ThreadLocal<Map<String, Object>> threadDataMap = new ThreadLocal<Map<String, Object>>();
     
     private ContextUtil(Map<String, Object> c){
     }
@@ -33,6 +36,38 @@ public class ContextUtil {
             res = defaultv;
         }
         return res;
+    }
+
+    public static Object getThreadData(String key) {
+        Map<String, Object> dataMap = threadDataMap.get();
+        if (dataMap == null) {
+            return null;
+        }
+        return dataMap.get(key);
+    }
+
+    public static void setThreadData(String key, Object obj) {
+        Map<String, Object> dataMap = threadDataMap.get();
+        if (dataMap == null) {
+            dataMap = new HashMap<String, Object>();
+        }
+        dataMap.put(key, obj);
+        threadDataMap.set(dataMap);
+    }
+
+    public static void cleanTheadData() {
+        Map<String, Object> dataMap = threadDataMap.get();
+        if (dataMap != null) {
+            dataMap.clear();
+        }
+    }
+
+    public static void setRegistryKey(String value) {
+        setThreadData("registryKey", value);
+    }
+
+    public static String getRegistryKey() {
+        return String.valueOf(getThreadData("registryKey"));
     }
 }
 

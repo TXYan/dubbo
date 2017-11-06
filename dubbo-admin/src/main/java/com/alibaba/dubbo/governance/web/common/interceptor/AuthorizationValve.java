@@ -31,6 +31,8 @@ import com.alibaba.dubbo.governance.service.UserService;
 import com.alibaba.dubbo.governance.web.util.WebConstants;
 import com.alibaba.dubbo.registry.common.domain.User;
 import com.alibaba.dubbo.registry.common.util.Coder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 
 /**
  * @author william.liangf
@@ -58,6 +60,13 @@ public class AuthorizationValve extends AbstractValve {
     public void invoke(PipelineContext pipelineContext) throws Exception {
         if (logger.isInfoEnabled()) {
             logger.info("AuthorizationValve of uri: " + request.getRequestURI());
+        }
+        //ytx 默认权限给root
+        if (true) {
+            User defaultUser = userService.findUser("root");
+            request.getSession().setAttribute(WebConstants.CURRENT_USER_KEY, defaultUser);
+            pipelineContext.invokeNext();
+            return;
         }
         String uri = request.getRequestURI();
 		String contextPath = request.getContextPath();

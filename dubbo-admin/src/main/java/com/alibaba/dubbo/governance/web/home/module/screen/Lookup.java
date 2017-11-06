@@ -19,6 +19,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.alibaba.dubbo.governance.web.util.ContextUtil;
+import com.alibaba.dubbo.registry.common.RegistryManager;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.alibaba.dubbo.common.URL;
@@ -32,9 +34,12 @@ public class Lookup extends Restful{
     
     @Autowired
     ConsumerService consumerDAO;
-    
+
     @Autowired
-    private RegistryService registryService;
+    private RegistryManager registryManager;
+    
+//    @Autowired
+//    private RegistryService registryService;
 
     public Result doExecute(Map<String, Object> context) throws Exception {
         String inf = request.getParameter("interface");
@@ -66,6 +71,8 @@ public class Lookup extends Restful{
         }
         
         if(version != null) u.addParameter("version", version);
+
+        RegistryService registryService = registryManager.getRegistryService(ContextUtil.getRegistryKey());
         
         List<URL> lookup = registryService.lookup(u);
         

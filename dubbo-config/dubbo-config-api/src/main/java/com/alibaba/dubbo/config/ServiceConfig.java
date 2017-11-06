@@ -24,6 +24,7 @@ import java.net.UnknownHostException;
 import java.util.*;
 
 import com.alibaba.dubbo.common.Constants;
+import com.alibaba.dubbo.common.Pair;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.Version;
 import com.alibaba.dubbo.common.bytecode.Wrapper;
@@ -38,7 +39,6 @@ import com.alibaba.dubbo.rpc.ProxyFactory;
 import com.alibaba.dubbo.rpc.cluster.ConfiguratorFactory;
 import com.alibaba.dubbo.rpc.service.GenericService;
 import com.alibaba.dubbo.rpc.support.ProtocolUtils;
-import javafx.util.Pair;
 
 /**
  * ServiceConfig

@@ -15,8 +15,11 @@
 package com.alibaba.dubbo.governance.service.impl;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.alibaba.dubbo.governance.web.util.ContextUtil;
+import com.alibaba.dubbo.registry.common.RegistryManager;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.alibaba.dubbo.common.URL;
@@ -34,15 +37,53 @@ public class AbstractService {
 
     protected static final Logger logger = LoggerFactory.getLogger(AbstractService.class);
 
+//    @Autowired
+//    private RegistryServerSync           sync;
+//
+//    @Autowired
+//    protected RegistryService registryService;
+
     @Autowired
-    private RegistryServerSync           sync;
-    
-    @Autowired
-    protected RegistryService registryService;
+    private RegistryManager registryManager;
+
+    private ConcurrentHashMap<String, ConcurrentMap<String, Map<Long, URL>>> emptyCache = new ConcurrentHashMap<String, ConcurrentMap<String, Map<Long, URL>>>();
     
     public ConcurrentMap<String, ConcurrentMap<String, Map<Long, URL>>> getRegistryCache(){
-        return sync.getRegistryCache();
+
+        String registryKey = ContextUtil.getRegistryKey();
+
+        RegistryServerSync registryServerSync = registryManager.getRegistryServiceSync(registryKey);
+        if (registryServerSync != null) {
+            return registryServerSync.getRegistryCache();
+        }
+        return emptyCache;
     }
+
+    protected void register(URL url) {
+        String registryKey = ContextUtil.getRegistryKey();
+
+        RegistryService registryService = registryManager.getRegistryService(registryKey);
+        if (registryService == null) {
+            return;
+        }
+
+        registryService.register(url);
+    }
+
+    protected void unregister(URL url) {
+        String registryKey = ContextUtil.getRegistryKey();
+
+        RegistryService registryService = registryManager.getRegistryService(registryKey);
+        if (registryService == null) {
+            return;
+        }
+        registryService.unregister(url);
+    }
+
+
+//    public ConcurrentMap<String, ConcurrentMap<String, Map<Long, URL>>> getRegistryCache(){
+//        return sync.getRegistryCache();
+//    }
     
     
 }

@@ -51,7 +51,13 @@
 </div>
 <div class="nav">
 	<ul>
-		<li id="unique_tab1" ><a href="$rootContextPath.getURI("/")">$i18n.get("home")</a></li>
+		<li id="unique_tab1" ><a href="$rootContextPath.getURI("/")" style="cursor:default;">$i18n.get("home")</a></li>
+        <li id="unique_tab4" class="sub_nav"><a href="#" onclick="return false;" style="cursor:default;">当前的注册中心</a>
+            <ul>
+				<li><a href="javascript:;" class="registry" registry="test" onclick="chooseRegistry(this)">注册中心test</a></li>
+				<li><a href="javascript:;" class="registry" registry = "test2" onclick="chooseRegistry(this)">注册中心test2</a></li>
+            </ul>
+        </li>
 		<li id="unique_tab2" class="sub_nav"><a href="#" onclick="return false;" style="cursor:default;">$i18n.get("governance")</a>
 			<ul>
 				#if($tool.checkUrl($currentUser,"/governance/services"))<li><a href="$rootContextPath.getURI("/governance/services")">$i18n.get("services")</a></li>#end
@@ -79,3 +85,48 @@
 	</ul>
 	<div class="about"><table><tr><td><img src="$rootContextPath.getURI("images/ico_help.png")" width="14" height="14" border="0" /></td><td><a href="$helpUrl" target="_blank">$i18n.get("help")</a></td></tr></table></div>
 </div>
+<script>
+	function chooseRegistry(dom) {
+	    var registryKey = dom.getAttribute('registry');
+        document.cookie="registryKey=" +escape(registryKey);
+        location.reload();
+    }
+    //获取cookie值的方法
+    function getCookie(c_name)
+    {
+        if (document.cookie.length>0)
+        {
+            c_start=document.cookie.indexOf(c_name + "=")
+            if (c_start!=-1)
+            {
+                c_start=c_start + c_name.length+1
+                c_end=document.cookie.indexOf(";",c_start)
+                if (c_end==-1) c_end=document.cookie.length
+                return unescape(document.cookie.substring(c_start,c_end))
+            }
+        }
+        return ""
+    }
+    function setCurrentRegistry() {
+        //设置当前选择的注册中心
+        var registryKey = getCookie('registryKey');
+        var registryName = '没有选择';
+        if (registryKey) {
+            var items = document.getElementsByClassName('registry');
+            if (items) {
+                for (var i = 0; i < items.length; i++) {
+                    items[i].removeAttribute('style');
+                    if (items[i].getAttribute('registry') == registryKey) {
+                        registryName = items[i].innerHTML;
+                        items[i].setAttribute("style", "color:green;");
+					}
+				}
+			}
+		}
+//        var tipDom = document.getElementById('unique_tab4');
+//        tipDom.innerHTML = "当前的注册中心<br/>(" + registryName + ")"
+    };
+
+    setCurrentRegistry();
+
+</script>

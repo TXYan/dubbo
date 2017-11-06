@@ -26,7 +26,7 @@ import com.alibaba.dubbo.common.extension.SPI;
  * @author ding.lid
  */
 @SPI("impl1")
-public interface SimpleExt {
+public interface    SimpleExt {
     // 没有使用key的@Adaptive ！
     @Adaptive
     String echo(URL url, String s);
