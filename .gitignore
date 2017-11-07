@@ -23,7 +23,8 @@ target/
 *.diff
 *.patch
 *.tmp
-
+*.file
+*.lock
 # system ignore
 .DS_Store
 Thumbs.db
