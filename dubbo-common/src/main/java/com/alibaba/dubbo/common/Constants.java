@@ -433,6 +433,7 @@ public class Constants {
 
     /**
      * 注册中心是否同步存储文件，默认异步
+     * ytx去掉了该key的使用，使用定时异步去处理
      */
     public static final String  REGISTRY_FILESAVE_SYNC_KEY         = "save.file";
 

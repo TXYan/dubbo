@@ -30,10 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -73,13 +70,16 @@ public abstract class AbstractRegistry implements Registry {
     // 本地磁盘缓存，其中特殊的key值.registies记录注册中心列表，其它均为notified服务提供者列表
     private final Properties properties = new Properties();
 
-    // 文件缓存定时写入
-    private final ExecutorService registryCacheExecutor = Executors.newFixedThreadPool(1, new NamedThreadFactory("DubboSaveRegistryCache", true));
+    //文件缓存定时写入
+    private final ScheduledExecutorService scheduleExecutor = Executors.newScheduledThreadPool(1, new NamedThreadFactory("DubboSaveRegistryCache", true));
 
     //是否是同步保存文件
-    private final boolean syncSaveFile ;
+//    private final boolean syncSaveFile ;
     
     private final AtomicLong lastCacheChanged = new AtomicLong();
+
+    //记录定时任务处理到的版本号
+    private long scheduleVersion = 0L;
 
     private final Set<URL> registered = new ConcurrentHashSet<URL>();
 
@@ -90,20 +90,34 @@ public abstract class AbstractRegistry implements Registry {
     public AbstractRegistry(URL url) {
         setUrl(url);
         // 启动文件保存定时器
-        syncSaveFile = url.getParameter(Constants.REGISTRY_FILESAVE_SYNC_KEY, false);
+//        syncSaveFile = url.getParameter(Constants.REGISTRY_FILESAVE_SYNC_KEY, false);
         String filename = url.getParameter(Constants.FILE_KEY, System.getProperty("user.home") + "/.dubbo/dubbo-registry-" + url.getHost() + ".cache");
-        File file = null;
-        if (ConfigUtils.isNotEmpty(filename)) {
-            file = new File(filename);
-            if(! file.exists() && file.getParentFile() != null && ! file.getParentFile().exists()){
-                if(! file.getParentFile().mkdirs()){
-                    throw new IllegalArgumentException("Invalid registry store file " + file + ", cause: Failed to create directory " + file.getParentFile() + "!");
-                }
-            }
-        }
-        this.file = file;
+        this.file = checkAndGetFile(filename);
+        initSaveFileSchedule();
         loadProperties();
         notify(url.getBackupUrls());
+    }
+
+    private void initSaveFileSchedule() {
+        scheduleExecutor.scheduleAtFixedRate(new Runnable() {
+            public void run() {
+                doSaveProperties(scheduleVersion);
+            }
+        }, 0, 1, TimeUnit.MINUTES);
+    }
+
+    private File checkAndGetFile(String filename) {
+        File file = null;
+        if (ConfigUtils.isEmpty(filename)) {
+            return null;
+        }
+        file = new File(filename);
+        if(! file.exists() && file.getParentFile() != null && ! file.getParentFile().exists()){
+            if(! file.getParentFile().mkdirs()){
+                throw new IllegalArgumentException("Invalid registry store file " + file + ", cause: Failed to create directory " + file.getParentFile() + "!");
+            }
+        }
+        return file;
     }
 
     protected void setUrl(URL url) {
@@ -141,20 +155,21 @@ public abstract class AbstractRegistry implements Registry {
         return lastCacheChanged;
     }
 
-    private class SaveProperties implements Runnable{
-        private long version;
-        private SaveProperties(long version){
-            this.version = version;
-        }
-        public void run() {
-            doSaveProperties(version);
-        }
-    }
+//    private class SaveProperties implements Runnable{
+//        private long version;
+//        private SaveProperties(long version){
+//            this.version = version;
+//        }
+//        public void run() {
+//            doSaveProperties(version);
+//        }
+//    }
     
     public void doSaveProperties(long version) {
-        if(version < lastCacheChanged.get()){
+        if(version >= lastCacheChanged.get()){
             return;
         }
+        scheduleVersion = lastCacheChanged.get();
         if (file == null) {
             return;
         }
@@ -213,11 +228,6 @@ public abstract class AbstractRegistry implements Registry {
                 raf.close();
             }
         } catch (Throwable e) {
-            if (version < lastCacheChanged.get()) {
-                return;
-            } else {
-                registryCacheExecutor.execute(new SaveProperties(lastCacheChanged.incrementAndGet()));
-            }
             logger.warn("Failed to save registry store file, cause: " + e.getMessage(), e);
         }
     }
@@ -470,11 +480,11 @@ public abstract class AbstractRegistry implements Registry {
             }
             properties.setProperty(url.getServiceKey(), buf.toString());
             long version = lastCacheChanged.incrementAndGet();
-            if (syncSaveFile) {
-                doSaveProperties(version);
-            } else {
-                registryCacheExecutor.execute(new SaveProperties(version));
-            }
+//            if (syncSaveFile) {
+//                doSaveProperties(version);
+//            } else {
+//                registryCacheExecutor.execute(new SaveProperties(version));
+//            }
         } catch (Throwable t) {
             logger.warn(t.getMessage(), t);
         }
