@@ -33,6 +33,8 @@ import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.utils.ConcurrentHashSet;
 import com.alibaba.dubbo.common.utils.NamedThreadFactory;
 import com.alibaba.dubbo.registry.NotifyListener;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
 
 /**
  * FailbackRegistry. (SPI, Prototype, ThreadSafe)
@@ -302,132 +304,165 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     // 重试失败的动作
     protected void retry() {
-        if (! failedRegistered.isEmpty()) {
-            Set<URL> failed = new HashSet<URL>(failedRegistered);
-            if (failed.size() > 0) {
-                if (logger.isInfoEnabled()) {
-                    logger.info("Retry register " + failed);
+        retryFailedRegistered();
+
+        retryFailedUnregistered();
+
+        retryFailedSubscribed();
+
+        retryFailedUnsubscribed();
+
+        retryFailedNotified();
+    }
+
+    private void retryFailedNotified() {
+        if (MapUtils.isEmpty(failedNotified)) {
+            return;
+        }
+        Map<URL, Map<NotifyListener, List<URL>>> failed = new HashMap<URL, Map<NotifyListener, List<URL>>>(failedNotified);
+        //TODO ytx 基于什么考虑 先将空值的key移除掉，增加一次循环？？
+//        for (Map.Entry<URL, Map<NotifyListener, List<URL>>> entry : new HashMap<URL, Map<NotifyListener, List<URL>>>(failed).entrySet()) {
+//            if (entry.getValue() == null || entry.getValue().size() == 0) {
+//                failed.remove(entry.getKey());
+//            }
+//        }
+        if (logger.isInfoEnabled()) {
+            logger.info("Retry notify " + failed);
+        }
+        try {
+            for (Map<NotifyListener, List<URL>> values : failed.values()) {
+                if (MapUtils.isEmpty(values)) {
+                    continue;
                 }
-                try {
-                    for (URL url : failed) {
-                        try {
-                            doRegister(url);
-                            failedRegistered.remove(url);
-                        } catch (Throwable t) { // 忽略所有异常，等待下次重试
-                            logger.warn("Failed to retry register " + failed + ", waiting for again, cause: " + t.getMessage(), t);
-                        }
+                for (Map.Entry<NotifyListener, List<URL>> entry : values.entrySet()) {
+                    try {
+                        NotifyListener listener = entry.getKey();
+                        List<URL> urls = entry.getValue();
+                        listener.notify(urls);
+                        values.remove(listener);
+                    } catch (Throwable t) { // 忽略所有异常，等待下次重试
+                        logger.warn("Failed to retry notify " + failed + ", waiting for again, cause: " + t.getMessage(), t);
                     }
+                }
+            }
+        } catch (Throwable t) { // 忽略所有异常，等待下次重试
+            logger.warn("Failed to retry notify " + failed + ", waiting for again, cause: " + t.getMessage(), t);
+        }
+    }
+
+    private void retryFailedUnsubscribed() {
+        if (MapUtils.isEmpty(failedUnsubscribed)) {
+            return;
+        }
+        Map<URL, Set<NotifyListener>> failed = new HashMap<URL, Set<NotifyListener>>(failedUnsubscribed);
+        //TODO ytx 基于什么考虑 先将空值的key移除掉，增加一次循环？？
+//        for (Map.Entry<URL, Set<NotifyListener>> entry : new HashMap<URL, Set<NotifyListener>>(failed).entrySet()) {
+//            if (entry.getValue() == null || entry.getValue().size() == 0) {
+//                failed.remove(entry.getKey());
+//            }
+//        }
+        if (logger.isInfoEnabled()) {
+            logger.info("Retry unsubscribe " + failed);
+        }
+        try {
+            for (Map.Entry<URL, Set<NotifyListener>> entry : failed.entrySet()) {
+                URL url = entry.getKey();
+                Set<NotifyListener> listeners = entry.getValue();
+                if (CollectionUtils.isEmpty(listeners)) {
+                    continue;
+                }
+                for (NotifyListener listener : listeners) {
+                    try {
+                        doUnsubscribe(url, listener);
+                        listeners.remove(listener);
+                    } catch (Throwable t) { // 忽略所有异常，等待下次重试
+                        logger.warn("Failed to retry unsubscribe " + failed + ", waiting for again, cause: " + t.getMessage(), t);
+                    }
+                }
+            }
+        } catch (Throwable t) { // 忽略所有异常，等待下次重试
+            logger.warn("Failed to retry unsubscribe " + failed + ", waiting for again, cause: " + t.getMessage(), t);
+        }
+    }
+
+    private void retryFailedSubscribed() {
+        if (MapUtils.isEmpty(failedSubscribed)) {
+            return;
+        }
+        Map<URL, Set<NotifyListener>> failed = new HashMap<URL, Set<NotifyListener>>(failedSubscribed);
+
+        //TODO ytx 基于什么考虑 先将空值的key移除掉，增加一次循环？？
+//        for (Map.Entry<URL, Set<NotifyListener>> entry : new HashMap<URL, Set<NotifyListener>>(failed).entrySet()) {
+//            if (entry.getValue() == null || entry.getValue().size() == 0) {
+//                failed.remove(entry.getKey());
+//            }
+//        }
+
+        if (logger.isInfoEnabled()) {
+            logger.info("Retry subscribe " + failed);
+        }
+        try {
+            for (Map.Entry<URL, Set<NotifyListener>> entry : failed.entrySet()) {
+                URL url = entry.getKey();
+                Set<NotifyListener> listeners = entry.getValue();
+                if (CollectionUtils.isEmpty(listeners)) {
+                    continue;
+                }
+                for (NotifyListener listener : listeners) {
+                    try {
+                        doSubscribe(url, listener);
+                        listeners.remove(listener);
+                    } catch (Throwable t) { // 忽略所有异常，等待下次重试
+                        logger.warn("Failed to retry subscribe " + failed + ", waiting for again, cause: " + t.getMessage(), t);
+                    }
+                }
+            }
+        } catch (Throwable t) { // 忽略所有异常，等待下次重试
+            logger.warn("Failed to retry subscribe " + failed + ", waiting for again, cause: " + t.getMessage(), t);
+        }
+    }
+
+    private void retryFailedUnregistered() {
+        if (CollectionUtils.isEmpty(failedUnregistered)) {
+            return;
+        }
+        Set<URL> failed = new HashSet<URL>(failedUnregistered);
+            if (logger.isInfoEnabled()) {
+                logger.info("Retry unregister " + failed);
+            }
+            try {
+                for (URL url : failed) {
+                    try {
+                        doUnregister(url);
+                        failedUnregistered.remove(url);
+                    } catch (Throwable t) { // 忽略所有异常，等待下次重试
+                        logger.warn("Failed to retry unregister  " + failed + ", waiting for again, cause: " + t.getMessage(), t);
+                    }
+                }
+            } catch (Throwable t) { // 忽略所有异常，等待下次重试
+                logger.warn("Failed to retry unregister  " + failed + ", waiting for again, cause: " + t.getMessage(), t);
+            }
+    }
+
+    private void retryFailedRegistered() {
+        if (CollectionUtils.isEmpty(failedRegistered)) {
+            return;
+        }
+        Set<URL> failed = new HashSet<URL>(failedRegistered);
+        if (logger.isInfoEnabled()) {
+            logger.info("Retry register " + failed);
+        }
+        try {
+            for (URL url : failed) {
+                try {
+                    doRegister(url);
+                    failedRegistered.remove(url);
                 } catch (Throwable t) { // 忽略所有异常，等待下次重试
                     logger.warn("Failed to retry register " + failed + ", waiting for again, cause: " + t.getMessage(), t);
                 }
             }
-        }
-        if(! failedUnregistered.isEmpty()) {
-            Set<URL> failed = new HashSet<URL>(failedUnregistered);
-            if (failed.size() > 0) {
-                if (logger.isInfoEnabled()) {
-                    logger.info("Retry unregister " + failed);
-                }
-                try {
-                    for (URL url : failed) {
-                        try {
-                            doUnregister(url);
-                            failedUnregistered.remove(url);
-                        } catch (Throwable t) { // 忽略所有异常，等待下次重试
-                            logger.warn("Failed to retry unregister  " + failed + ", waiting for again, cause: " + t.getMessage(), t);
-                        }
-                    }
-                } catch (Throwable t) { // 忽略所有异常，等待下次重试
-                    logger.warn("Failed to retry unregister  " + failed + ", waiting for again, cause: " + t.getMessage(), t);
-                }
-            }
-        }
-        if (! failedSubscribed.isEmpty()) {
-            Map<URL, Set<NotifyListener>> failed = new HashMap<URL, Set<NotifyListener>>(failedSubscribed);
-            for (Map.Entry<URL, Set<NotifyListener>> entry : new HashMap<URL, Set<NotifyListener>>(failed).entrySet()) {
-                if (entry.getValue() == null || entry.getValue().size() == 0) {
-                    failed.remove(entry.getKey());
-                }
-            }
-            if (failed.size() > 0) {
-                if (logger.isInfoEnabled()) {
-                    logger.info("Retry subscribe " + failed);
-                }
-                try {
-                    for (Map.Entry<URL, Set<NotifyListener>> entry : failed.entrySet()) {
-                        URL url = entry.getKey();
-                        Set<NotifyListener> listeners = entry.getValue();
-                        for (NotifyListener listener : listeners) {
-                            try {
-                                doSubscribe(url, listener);
-                                listeners.remove(listener);
-                            } catch (Throwable t) { // 忽略所有异常，等待下次重试
-                                logger.warn("Failed to retry subscribe " + failed + ", waiting for again, cause: " + t.getMessage(), t);
-                            }
-                        }
-                    }
-                } catch (Throwable t) { // 忽略所有异常，等待下次重试
-                    logger.warn("Failed to retry subscribe " + failed + ", waiting for again, cause: " + t.getMessage(), t);
-                }
-            }
-        }
-        if (! failedUnsubscribed.isEmpty()) {
-            Map<URL, Set<NotifyListener>> failed = new HashMap<URL, Set<NotifyListener>>(failedUnsubscribed);
-            for (Map.Entry<URL, Set<NotifyListener>> entry : new HashMap<URL, Set<NotifyListener>>(failed).entrySet()) {
-                if (entry.getValue() == null || entry.getValue().size() == 0) {
-                    failed.remove(entry.getKey());
-                }
-            }
-            if (failed.size() > 0) {
-                if (logger.isInfoEnabled()) {
-                    logger.info("Retry unsubscribe " + failed);
-                }
-                try {
-                    for (Map.Entry<URL, Set<NotifyListener>> entry : failed.entrySet()) {
-                        URL url = entry.getKey();
-                        Set<NotifyListener> listeners = entry.getValue();
-                        for (NotifyListener listener : listeners) {
-                            try {
-                                doUnsubscribe(url, listener);
-                                listeners.remove(listener);
-                            } catch (Throwable t) { // 忽略所有异常，等待下次重试
-                                logger.warn("Failed to retry unsubscribe " + failed + ", waiting for again, cause: " + t.getMessage(), t);
-                            }
-                        }
-                    }
-                } catch (Throwable t) { // 忽略所有异常，等待下次重试
-                    logger.warn("Failed to retry unsubscribe " + failed + ", waiting for again, cause: " + t.getMessage(), t);
-                }
-            }
-        }
-        if (! failedNotified.isEmpty()) {
-            Map<URL, Map<NotifyListener, List<URL>>> failed = new HashMap<URL, Map<NotifyListener, List<URL>>>(failedNotified);
-            for (Map.Entry<URL, Map<NotifyListener, List<URL>>> entry : new HashMap<URL, Map<NotifyListener, List<URL>>>(failed).entrySet()) {
-                if (entry.getValue() == null || entry.getValue().size() == 0) {
-                    failed.remove(entry.getKey());
-                }
-            }
-            if (failed.size() > 0) {
-                if (logger.isInfoEnabled()) {
-                    logger.info("Retry notify " + failed);
-                }
-                try {
-                    for (Map<NotifyListener, List<URL>> values : failed.values()) {
-                        for (Map.Entry<NotifyListener, List<URL>> entry : values.entrySet()) {
-                            try {
-                                NotifyListener listener = entry.getKey();
-                                List<URL> urls = entry.getValue();
-                                listener.notify(urls);
-                                values.remove(listener);
-                            } catch (Throwable t) { // 忽略所有异常，等待下次重试
-                                logger.warn("Failed to retry notify " + failed + ", waiting for again, cause: " + t.getMessage(), t);
-                            }
-                        }
-                    }
-                } catch (Throwable t) { // 忽略所有异常，等待下次重试
-                    logger.warn("Failed to retry notify " + failed + ", waiting for again, cause: " + t.getMessage(), t);
-                }
-            }
+        } catch (Throwable t) { // 忽略所有异常，等待下次重试
+            logger.warn("Failed to retry register " + failed + ", waiting for again, cause: " + t.getMessage(), t);
         }
     }
 

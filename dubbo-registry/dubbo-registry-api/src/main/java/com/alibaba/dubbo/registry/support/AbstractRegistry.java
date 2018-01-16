@@ -44,6 +44,8 @@ import com.alibaba.dubbo.common.utils.NamedThreadFactory;
 import com.alibaba.dubbo.common.utils.UrlUtils;
 import com.alibaba.dubbo.registry.NotifyListener;
 import com.alibaba.dubbo.registry.Registry;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
 
 /**
  * AbstractRegistry. (SPI, Prototype, ThreadSafe)
@@ -360,29 +362,48 @@ public abstract class AbstractRegistry implements Registry {
 
     protected void recover() throws Exception {
         // register
-        Set<URL> recoverRegistered = new HashSet<URL>(getRegistered());
-        if (! recoverRegistered.isEmpty()) {
-            if (logger.isInfoEnabled()) {
-                logger.info("Recover register url " + recoverRegistered);
-            }
-            for (URL url : recoverRegistered) {
-                register(url);
-            }
-        }
+        recoverRegister();
+        // subscribe
+        recoverSubscribe();
+    }
+
+    private void recoverSubscribe() {
         // subscribe
         Map<URL, Set<NotifyListener>> recoverSubscribed = new HashMap<URL, Set<NotifyListener>>(getSubscribed());
-        if (! recoverSubscribed.isEmpty()) {
-            if (logger.isInfoEnabled()) {
-                logger.info("Recover subscribe url " + recoverSubscribed.keySet());
-            }
-            for (Map.Entry<URL, Set<NotifyListener>> entry : recoverSubscribed.entrySet()) {
-                URL url = entry.getKey();
-                for (NotifyListener listener : entry.getValue()) {
-                    subscribe(url, listener);
-                }
-            }
+        if (MapUtils.isEmpty(recoverSubscribed)) {
+            return;
+        }
+        if (logger.isInfoEnabled()) {
+            logger.info("Recover subscribe url " + recoverSubscribed.keySet());
+        }
+        for (Map.Entry<URL, Set<NotifyListener>> entry : recoverSubscribed.entrySet()) {
+            subscribe(entry.getKey(), entry.getValue());
         }
     }
+
+    private void subscribe(URL url, Set<NotifyListener> listenerSet) {
+        if (url == null || CollectionUtils.isEmpty(listenerSet)) {
+            return;
+        }
+        for (NotifyListener listener : listenerSet) {
+            subscribe(url, listener);
+        }
+    }
+
+    private void recoverRegister() {
+        // register
+        Set<URL> recoverRegistered = new HashSet<URL>(getRegistered());
+        if (CollectionUtils.isEmpty(recoverRegistered)) {
+            return;
+        }
+        if (logger.isInfoEnabled()) {
+            logger.info("Recover register url " + recoverRegistered);
+        }
+        for (URL url : recoverRegistered) {
+            register(url);
+        }
+    }
+
 
     protected static List<URL> filterEmpty(URL url, List<URL> urls) {
         if (urls == null || urls.size() == 0) {
@@ -423,7 +444,7 @@ public abstract class AbstractRegistry implements Registry {
         if (listener == null) {
             throw new IllegalArgumentException("notify listener == null");
         }
-        if ((urls == null || urls.size() == 0) 
+        if (CollectionUtils.isEmpty(urls)
                 && ! Constants.ANY_VALUE.equals(url.getServiceInterface())) {
             logger.warn("Ignore empty notify urls for subscribe url " + url);
             return;
@@ -479,12 +500,8 @@ public abstract class AbstractRegistry implements Registry {
                 }
             }
             properties.setProperty(url.getServiceKey(), buf.toString());
-            long version = lastCacheChanged.incrementAndGet();
-//            if (syncSaveFile) {
-//                doSaveProperties(version);
-//            } else {
-//                registryCacheExecutor.execute(new SaveProperties(version));
-//            }
+            //更新最新数据的版本
+            lastCacheChanged.incrementAndGet();
         } catch (Throwable t) {
             logger.warn(t.getMessage(), t);
         }
